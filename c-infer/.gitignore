@@ -1,0 +1,5 @@
+# ignore onnxruntime & opencv-mobile binaries
+onnxruntime/*
+opencv-mobile/*
+
+
