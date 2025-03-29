@@ -1,0 +1,7 @@
+onnxruntime
+opencv-python
+numpy
+pyzbar
+
+# 如果具有 gpu 环境
+# onnxruntime-gpu
