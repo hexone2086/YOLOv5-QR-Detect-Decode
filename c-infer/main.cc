@@ -331,7 +331,8 @@ cv::Mat processFrame(cv::Mat &frame, Ort::Session &session,
     int orig_h = frame.rows;
     int orig_w = frame.cols;
 
-    // printf("Original frame size: %dx%d\n", orig_w, orig_h);
+    // 开始计时
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     // Preprocess
     auto input_data = preprocess(frame);
@@ -358,6 +359,13 @@ cv::Mat processFrame(cv::Mat &frame, Ort::Session &session,
         1,
         output_names,
         1);
+
+    // 结束计时
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    
+    // 输出推理时间
+    std::cout << "Inference time: " << duration.count() << "ms" << std::endl;
 
     // Get output data
     float *output_data = output_tensors.front().GetTensorMutableData<float>();
@@ -427,10 +435,19 @@ void runInference(const std::string &weightsPath, const std::string &source)
     // Initialize ONNX Runtime
     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "QRDetector");
     Ort::SessionOptions session_options;
+    
+    // Enable CUDA execution provider
+    OrtSessionOptionsAppendExecutionProvider_CUDA(session_options, 0);
+    
+    // Set graph optimization level
+    session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+    
+    // You may want to adjust these based on your GPU
     session_options.SetIntraOpNumThreads(1);
+    session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
 
     Ort::Session session(env, weightsPath.c_str(), session_options);
-
+    
     Ort::AllocatedStringPtr input_name = session.GetInputNameAllocated(0, Ort::AllocatorWithDefaultOptions());
     Ort::AllocatedStringPtr output_name = session.GetOutputNameAllocated(0, Ort::AllocatorWithDefaultOptions());
 
@@ -442,9 +459,6 @@ void runInference(const std::string &weightsPath, const std::string &source)
     cv::Mat frame;
     bool is_camera = false;
     cv::VideoCapture cap;
-
-    cv::VideoWriter http;
-    http.open("httpjpg", 7766);
 
     // Check if source is a camera index (single digit)
     if (source.size() == 1 && isdigit(source[0]))

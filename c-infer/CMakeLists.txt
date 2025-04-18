@@ -17,15 +17,10 @@ endif()
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 message(STATUS "OpenCV include path: ${OpenCV_INCLUDE_DIRS}")
 
-# Set ONNX Runtime path (关键修改点)
-set(onnxruntime_DIR ${CMAKE_SOURCE_DIR}/onnxruntime/lib64/cmake/onnxruntime)
-find_package(onnxruntime REQUIRED CONFIG)  # 显式指定使用 CONFIG 模式
-
-if(NOT onnxruntime_FOUND)
-    message(FATAL_ERROR "ONNX Runtime not found. Please check onnxruntime_DIR or install ONNX Runtime.")
-endif()
-
-message(STATUS "ONNX Runtime include path: ${ONNXRuntime_INCLUDE_DIRS}")
+# 设置 ONNX Runtime 的根目录
+set(ONNXRUNTIME_ROOT ${CMAKE_SOURCE_DIR}/onnxruntime)
+include_directories(${ONNXRUNTIME_ROOT}/include)
+link_directories(${ONNXRUNTIME_ROOT}/lib)
 
 # Find ZBar
 find_package(PkgConfig REQUIRED)
@@ -46,6 +41,6 @@ add_executable(qr_detector main.cc)
 target_link_libraries(qr_detector
     ${OpenCV_LIBS}
     # ${ONNXRuntime_LIBRARIES}
-    ${CMAKE_SOURCE_DIR}/onnxruntime/lib64/libonnxruntime.so
     ${ZBAR_LIBRARIES}
+    onnxruntime
 )
