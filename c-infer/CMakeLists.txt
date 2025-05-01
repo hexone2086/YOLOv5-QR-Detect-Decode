@@ -44,3 +44,20 @@ target_link_libraries(qr_detector
     ${ZBAR_LIBRARIES}
     onnxruntime
 )
+
+# Add executable
+add_executable(qr_detector_csi main_csi.cc)
+
+# Link libraries
+target_link_libraries(qr_detector_csi
+    ${OpenCV_LIBS}
+    # ${ONNXRuntime_LIBRARIES}
+    ${ZBAR_LIBRARIES}
+    onnxruntime
+)
+
+add_executable(csi_test csi_test.cc)
+
+target_link_libraries(csi_test
+    ${OpenCV_LIBS}
+)

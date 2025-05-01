@@ -426,7 +426,9 @@ cv::Mat processFrame(cv::Mat &frame, Ort::Session &session,
     }
 
     // Display
-    // cv::imshow("QR Detection", frame);
+    cv::Mat frame_disp;
+    cv::resize(frame, frame_disp, cv::Size(640, 480));
+    cv::imshow("QR Detection", frame_disp);
     return frame;
 }
 
