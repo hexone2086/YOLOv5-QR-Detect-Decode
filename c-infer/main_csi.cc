@@ -9,6 +9,8 @@
 #include <vector>
 #include <zbar.h>
 
+#include "fsrcnn_module.h"
+
 // Constants
 const cv::Size IMG_SIZE(640, 640);
 const float CONF_THRESH = 0.5f;
@@ -16,6 +18,8 @@ const float IOU_THRESH = 0.45f;
 const int MAX_DET = 100;
 const float EXPAND_RATIO = 0.3f;
 const float SR_SCALE = 2.0f;
+
+SuperResolution *sr;
 
 // Helper functions
 cv::Mat applyCLAHE(const cv::Mat &image) {
@@ -282,9 +286,23 @@ std::pair<cv::Mat, cv::Rect> expandAndCrop(const cv::Mat &image,
 }
 
 std::string decodeWithZbar(const cv::Mat &image) {
+  cv::Mat sr_image;
+
+  // Apply super resolution
+  if (!sr->processImage(image, sr_image)) {
+    std::cerr << "Super resolution failed\n";
+    return "";
+  }
+
   // Convert to grayscale
   cv::Mat gray;
   cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+
+  // // Auto thresholding
+  // cv::threshold(gray, gray, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+
+  // Debug print
+  cv::imshow("sr_image", gray);
 
   // Create zbar scanner
   zbar::ImageScanner scanner;
@@ -378,13 +396,6 @@ cv::Mat processFrame(cv::Mat &frame, Ort::Session &session,
     // printf("[%s:%d]Absolute coords: x1=%d, y1=%d, x2=%d, y2=%d\n", __FILE__,
     // __LINE__, x1_abs, y1_abs, x2_abs, y2_abs);
 
-    // 在 frame 上绘制检测框
-    cv::rectangle(frame, cv::Point(x1_abs, y1_abs), cv::Point(x2_abs, y2_abs),
-                  cv::Scalar(0, 255, 0), 2);
-    std::string label = "QR: " + std::to_string(det.confidence);
-    cv::putText(frame, label, cv::Point(x1_abs, y1_abs - 10),
-                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 2);
-
     // Expand and crop
     auto [cropped, roi] = expandAndCrop(frame, det);
 
@@ -395,11 +406,9 @@ cv::Mat processFrame(cv::Mat &frame, Ort::Session &session,
       // Decode QR
       std::string qr_data = decodeWithZbar(cropped);
 
-      // Draw on original frame
-      cv::rectangle(frame, cv::Point(x1_abs, y1_abs), cv::Point(x2_abs, y2_abs),
-                    cv::Scalar(0, 255, 0), 2);
+      // Draw Decode result
       std::string label = qr_data.empty() ? "No QR" : "QR: " + qr_data;
-      cv::putText(frame, label, cv::Point(x1_abs, y1_abs - 10),
+      cv::putText(frame, label, cv::Point(x1_abs, y1_abs - 30),
                   cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 2);
 
       if (!qr_data.empty()) {
@@ -407,7 +416,14 @@ cv::Mat processFrame(cv::Mat &frame, Ort::Session &session,
                   << " | Confidence: " << det.confidence << std::endl;
       }
     }
-  }
+
+    // 在 frame 上绘制检测框
+    cv::rectangle(frame, cv::Point(x1_abs, y1_abs), cv::Point(x2_abs, y2_abs),
+                  cv::Scalar(0, 255, 0), 2);
+    std::string label = "QR: " + std::to_string(det.confidence);
+    cv::putText(frame, label, cv::Point(x1_abs, y1_abs - 10),
+                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 2);
+    }
 
   // Display
   cv::Mat frame_disp;
@@ -478,12 +494,16 @@ void runInference(const std::string &weightsPath) {
 
 int main(int argc, char **argv) {
   if (argc < 2) {
-    std::cerr << "Usage: " << argv[0] << " <model_path>" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " <yolov5s_model_path>" << " <fsrcnn_model_path>" << std::endl;
     return 1;
   }
 
-  std::string weightsPath = argv[1];
+  std::string yolo_weightsPath = argv[1];
+  std::string sr_weightsPath = argv[2];
 
-  runInference(weightsPath);
+  sr = new SuperResolution();
+  sr->loadModel(sr_weightsPath);
+
+  runInference(yolo_weightsPath);
   return 0;
 }

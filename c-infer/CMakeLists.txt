@@ -35,7 +35,7 @@ include_directories(
 )
 
 # Add executable
-add_executable(qr_detector main.cc)
+add_executable(qr_detector fsrcnn_module.cc main.cc)
 
 # Link libraries
 target_link_libraries(qr_detector
@@ -46,7 +46,7 @@ target_link_libraries(qr_detector
 )
 
 # Add executable
-add_executable(qr_detector_csi main_csi.cc)
+add_executable(qr_detector_csi fsrcnn_module.cc main_csi.cc)
 
 # Link libraries
 target_link_libraries(qr_detector_csi
